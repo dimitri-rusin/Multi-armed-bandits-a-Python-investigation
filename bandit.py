@@ -79,7 +79,7 @@ if __name__ == '__main__':
   num_timesteps = 1_000
   num_runs = 2_000
   num_levers = 10
-  seed = 42
+  seed = 41
 
   random_average_rewards, random_average_num_optimal_selected = experiment(
     num_runs = num_runs,
@@ -115,8 +115,8 @@ if __name__ == '__main__':
 
   # Create a subplot figure with 2 rows and 1 column
   fig = plotly.subplots.make_subplots(rows=2, cols=1, subplot_titles=(
-    'Average Cumulative Rewards',
-    '% Optimal Action Selected'))
+    'Average reward',
+    '% Optimal action'))
 
   # Define colors for each strategy
   colors = {
@@ -126,13 +126,13 @@ if __name__ == '__main__':
     'Epsilon 0.1': 'blue'
   }
 
-  # Add plots for Average Cumulative Rewards
+  # Add plots for Average reward
   fig.add_trace(plotly.graph_objects.Scatter(x=list(range(num_timesteps)), y=random_average_rewards, mode='lines', name='Random', line=dict(color=colors['Random'])), row=1, col=1)
   fig.add_trace(plotly.graph_objects.Scatter(x=list(range(num_timesteps)), y=greedy_average_rewards, mode='lines', name='Greedy', line=dict(color=colors['Greedy'])), row=1, col=1)
   fig.add_trace(plotly.graph_objects.Scatter(x=list(range(num_timesteps)), y=greedy_epsilon_0_01_average_rewards, mode='lines', name='Epsilon 0.01', line=dict(color=colors['Epsilon 0.01'])), row=1, col=1)
   fig.add_trace(plotly.graph_objects.Scatter(x=list(range(num_timesteps)), y=greedy_epsilon_0_1_average_rewards, mode='lines', name='Epsilon 0.1', line=dict(color=colors['Epsilon 0.1'])), row=1, col=1)
 
-  # Add plots for % Optimal Action Selected
+  # Add plots for % Optimal action
   fig.add_trace(plotly.graph_objects.Scatter(x=list(range(num_timesteps)), y=random_average_num_optimal_selected, mode='lines', name='Random', line=dict(color=colors['Random'])), row=2, col=1)
   fig.add_trace(plotly.graph_objects.Scatter(x=list(range(num_timesteps)), y=greedy_average_num_optimal_selected, mode='lines', name='Greedy', line=dict(color=colors['Greedy'])), row=2, col=1)
   fig.add_trace(plotly.graph_objects.Scatter(x=list(range(num_timesteps)), y=greedy_epsilon_0_01_average_num_optimal_selected, mode='lines', name='Epsilon 0.01', line=dict(color=colors['Epsilon 0.01'])), row=2, col=1)
