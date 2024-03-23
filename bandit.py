@@ -4,8 +4,6 @@ import numpy
 import plotly.graph_objects
 import plotly.subplots
 
-
-
 class MultiArmedBandit(gymnasium.Env):
   def __init__(self, num_levers):
     super(MultiArmedBandit, self).__init__()
@@ -34,8 +32,6 @@ class MultiArmedBandit(gymnasium.Env):
 
     return 0, reward, True, False, {}
 
-
-
 def bandit_random(env, average_reward_per_action):
   action_list = list(range(env.action_space.n))
   action = numpy.random.choice(action_list)
@@ -51,24 +47,25 @@ def epsilon_greedy(env, average_reward_per_action, epsilon=0):
     best_actions = [action for action, avg_reward in average_reward_per_action.items() if avg_reward == max_average]
     return numpy.random.choice(best_actions)
 
-
-
 def experiment(num_runs, num_timesteps, num_levers, seed, algorithm):
+
   numpy.random.seed(seed)
+
   env = MultiArmedBandit(num_levers = num_levers)
   rewards = numpy.zeros(num_timesteps)
   num_optimal_selected = numpy.zeros(num_timesteps)
 
   for run in range(num_runs):
-    total_reward = 0
     average_reward_per_action = {action:0 for action in range(env.action_space.n)}
+    action_visit_count = {action:0 for action in range(env.action_space.n)}
     state = env.reset()
     for timestep in range(1, num_timesteps + 1):
 
       action = algorithm(env, average_reward_per_action)
       _, reward, _, _, _ = env.step(action)
 
-      average_reward_per_action[action] += (1 / timestep) * (reward - average_reward_per_action[action])
+      action_visit_count[action] += 1
+      average_reward_per_action[action] += (1 / action_visit_count[action]) * (reward - average_reward_per_action[action])
 
       rewards[timestep - 1] += reward
       num_optimal_selected[timestep - 1] += env.num_optimal_selected / timestep
@@ -78,14 +75,12 @@ def experiment(num_runs, num_timesteps, num_levers, seed, algorithm):
 
   return average_rewards, average_num_optimal_selected
 
-
 if __name__ == '__main__':
   num_timesteps = 1_000
-  num_runs = 1_000
+  num_runs = 2_000
   num_levers = 10
   seed = 42
 
-  # Run experiments
   random_average_rewards, random_average_num_optimal_selected = experiment(
     num_runs = num_runs,
     num_timesteps = num_timesteps,
@@ -102,7 +97,7 @@ if __name__ == '__main__':
     algorithm = lambda env, average_reward_per_action: epsilon_greedy(env, average_reward_per_action, epsilon = 0),
   )
 
-  greedy_epsilon_01_average_rewards, greedy_epsilon_01_average_num_optimal_selected = experiment(
+  greedy_epsilon_0_01_average_rewards, greedy_epsilon_0_01_average_num_optimal_selected = experiment(
     num_runs = num_runs,
     num_timesteps = num_timesteps,
     num_levers = num_levers,
@@ -110,7 +105,7 @@ if __name__ == '__main__':
     algorithm = lambda env, average_reward_per_action: epsilon_greedy(env, average_reward_per_action, epsilon = 0.01),
   )
 
-  greedy_epsilon_1_average_rewards, greedy_epsilon_1_average_num_optimal_selected = experiment(
+  greedy_epsilon_0_1_average_rewards, greedy_epsilon_0_1_average_num_optimal_selected = experiment(
     num_runs = num_runs,
     num_timesteps = num_timesteps,
     num_levers = num_levers,
@@ -134,14 +129,14 @@ if __name__ == '__main__':
   # Add plots for Average Cumulative Rewards
   fig.add_trace(plotly.graph_objects.Scatter(x=list(range(num_timesteps)), y=random_average_rewards, mode='lines', name='Random', line=dict(color=colors['Random'])), row=1, col=1)
   fig.add_trace(plotly.graph_objects.Scatter(x=list(range(num_timesteps)), y=greedy_average_rewards, mode='lines', name='Greedy', line=dict(color=colors['Greedy'])), row=1, col=1)
-  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(num_timesteps)), y=greedy_epsilon_01_average_rewards, mode='lines', name='Epsilon 0.01', line=dict(color=colors['Epsilon 0.01'])), row=1, col=1)
-  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(num_timesteps)), y=greedy_epsilon_1_average_rewards, mode='lines', name='Epsilon 0.1', line=dict(color=colors['Epsilon 0.1'])), row=1, col=1)
+  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(num_timesteps)), y=greedy_epsilon_0_01_average_rewards, mode='lines', name='Epsilon 0.01', line=dict(color=colors['Epsilon 0.01'])), row=1, col=1)
+  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(num_timesteps)), y=greedy_epsilon_0_1_average_rewards, mode='lines', name='Epsilon 0.1', line=dict(color=colors['Epsilon 0.1'])), row=1, col=1)
 
   # Add plots for % Optimal Action Selected
   fig.add_trace(plotly.graph_objects.Scatter(x=list(range(num_timesteps)), y=random_average_num_optimal_selected, mode='lines', name='Random', line=dict(color=colors['Random'])), row=2, col=1)
   fig.add_trace(plotly.graph_objects.Scatter(x=list(range(num_timesteps)), y=greedy_average_num_optimal_selected, mode='lines', name='Greedy', line=dict(color=colors['Greedy'])), row=2, col=1)
-  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(num_timesteps)), y=greedy_epsilon_01_average_num_optimal_selected, mode='lines', name='Epsilon 0.01', line=dict(color=colors['Epsilon 0.01'])), row=2, col=1)
-  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(num_timesteps)), y=greedy_epsilon_1_average_num_optimal_selected, mode='lines', name='Epsilon 0.1', line=dict(color=colors['Epsilon 0.1'])), row=2, col=1)
+  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(num_timesteps)), y=greedy_epsilon_0_01_average_num_optimal_selected, mode='lines', name='Epsilon 0.01', line=dict(color=colors['Epsilon 0.01'])), row=2, col=1)
+  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(num_timesteps)), y=greedy_epsilon_0_1_average_num_optimal_selected, mode='lines', name='Epsilon 0.1', line=dict(color=colors['Epsilon 0.1'])), row=2, col=1)
 
   # Update layout
   fig.update_layout(
