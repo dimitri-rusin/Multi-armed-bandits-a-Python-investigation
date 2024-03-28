@@ -62,17 +62,19 @@ class RandomAgent:
     pass
 
 class EpsilonGreedyAgent:
-  def __init__(self, num_levers, epsilon):
+  def __init__(self, num_levers, epsilon, alpha = None, initial_sample_average = 0):
     self.action_space = numpy.arange(num_levers)
     self.random_state = None
+    self.alpha = alpha
     self.sample_count = None
     self.sample_average = None
     self.epsilon = epsilon
+    self.initial_sample_average = initial_sample_average
 
   def reset(self, seed):
     self.random_state = numpy.random.RandomState(seed)
     self.sample_count = {action:0 for action in self.action_space}
-    self.sample_average = {action:0 for action in self.action_space}
+    self.sample_average = {action:self.initial_sample_average for action in self.action_space}
 
   def act(self):
     if self.random_state.random() < self.epsilon:
@@ -85,8 +87,11 @@ class EpsilonGreedyAgent:
       return self.random_state.choice(best_actions)
 
   def learn(self, action, reward):
-    self.sample_count[action] += 1
-    self.sample_average[action] += (1 / self.sample_count[action]) * (reward - self.sample_average[action])
+    if self.alpha:
+      self.sample_average[action] += self.alpha * (reward - self.sample_average[action])
+    else:
+      self.sample_count[action] += 1
+      self.sample_average[action] += (1 / self.sample_count[action]) * (reward - self.sample_average[action])
 
 def experiment(num_runs, max_timesteps, num_levers, seed, agent, return_optimal = False):
   numpy.random.seed(seed)
@@ -147,6 +152,22 @@ if __name__ == '__main__':
     agent = EpsilonGreedyAgent(num_levers = 10, epsilon = 0.1),
   )
 
+  greedy_epsilon_0_1_with_constant_average_rewards, greedy_epsilon_0_1_with_constant_average_probability_optimally_acted = experiment(
+    num_runs = num_runs,
+    max_timesteps = max_timesteps,
+    num_levers = num_levers,
+    seed = seed,
+    agent = EpsilonGreedyAgent(num_levers = 10, epsilon = 0.1, alpha = 0.1),
+  )
+
+  optimistic_greedy_epsilon_0_1_with_constant_average_rewards, optimistic_greedy_epsilon_0_1_with_constant_average_probability_optimally_acted = experiment(
+    num_runs = num_runs,
+    max_timesteps = max_timesteps,
+    num_levers = num_levers,
+    seed = seed,
+    agent = EpsilonGreedyAgent(num_levers = 10, epsilon = 0, alpha = 0.1, initial_sample_average = 5),
+  )
+
   # Create a subplot figure with 2 rows and 1 column
   fig = plotly.subplots.make_subplots(rows=2, cols=1, subplot_titles=(
     'Average reward',
@@ -166,6 +187,8 @@ if __name__ == '__main__':
   fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=greedy_average_rewards, mode='lines', name='Greedy', line=dict(color=colors['Greedy'])), row=1, col=1)
   fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=greedy_epsilon_0_01_average_rewards, mode='lines', name='Epsilon 0.01', line=dict(color=colors['Epsilon 0.01'])), row=1, col=1)
   fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=greedy_epsilon_0_1_average_rewards, mode='lines', name='Epsilon 0.1', line=dict(color=colors['Epsilon 0.1'])), row=1, col=1)
+  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=greedy_epsilon_0_1_with_constant_average_rewards, mode='lines', name='Epsilon 0.1 With Constant Step-Size', line=dict(color=colors['Epsilon 0.1'])), row=1, col=1)
+  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=optimistic_greedy_epsilon_0_1_with_constant_average_rewards, mode='lines', name='Optimistic Greedy With Constant Step-Size', line=dict(color=colors['Epsilon 0.1'])), row=1, col=1)
 
   # Add plots for % Optimal action
   fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=average_optimal_probability_optimally_acted, mode='lines', name='Optimal', line=dict(color=colors['Random'])), row=2, col=1)
@@ -173,6 +196,8 @@ if __name__ == '__main__':
   fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=greedy_average_probability_optimally_acted, mode='lines', name='Greedy', line=dict(color=colors['Greedy'])), row=2, col=1)
   fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=greedy_epsilon_0_01_average_probability_optimally_acted, mode='lines', name='Epsilon 0.01', line=dict(color=colors['Epsilon 0.01'])), row=2, col=1)
   fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=greedy_epsilon_0_1_average_probability_optimally_acted, mode='lines', name='Epsilon 0.1', line=dict(color=colors['Epsilon 0.1'])), row=2, col=1)
+  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=greedy_epsilon_0_1_with_constant_average_probability_optimally_acted, mode='lines', name='Epsilon 0.1 With Constant Step-Size', line=dict(color=colors['Epsilon 0.1'])), row=2, col=1)
+  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=optimistic_greedy_epsilon_0_1_with_constant_average_probability_optimally_acted, mode='lines', name='Optimistic Greedy With Constant Step-Size', line=dict(color=colors['Epsilon 0.1'])), row=2, col=1)
 
   # Update layout
   fig.update_layout(
