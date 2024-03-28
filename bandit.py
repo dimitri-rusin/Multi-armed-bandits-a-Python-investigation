@@ -1,4 +1,6 @@
 import copy
+import numpy
+import pandas
 import inspectify
 import numpy
 import plotly.graph_objects
@@ -93,6 +95,27 @@ class EpsilonGreedyAgent:
       self.sample_count[action] += 1
       self.sample_average[action] += (1 / self.sample_count[action]) * (reward - self.sample_average[action])
 
+class UpperConfidenceBoundAgent:
+  def __init__(self, num_levers, c=2):
+    self.action_space = numpy.arange(num_levers)
+    self.c = c
+
+  def reset(self, seed):
+    self.random_state = numpy.random.RandomState(seed)
+    self.num_timesteps = 0
+    actions = pandas.Index(self.action_space, name='action')
+    self.sample_count = pandas.Series(0, index=actions)
+    self.sample_average = pandas.Series(0.0, index=actions)
+
+  def act(self):
+    ucb_values = self.sample_average + self.c * numpy.sqrt(numpy.log(self.num_timesteps + 1) / (self.sample_count + 1))
+    return ucb_values.idxmax()
+
+  def learn(self, action, reward):
+    self.num_timesteps += 1
+    self.sample_count[action] += 1
+    self.sample_average[action] += (reward - self.sample_average[action]) / self.sample_count[action]
+
 def experiment(num_runs, max_timesteps, num_levers, seed, agent, return_optimal = False):
   numpy.random.seed(seed)
   bandit_environment = MultiArmedBandit(num_levers = num_levers, max_timesteps = max_timesteps)
@@ -115,7 +138,7 @@ def experiment(num_runs, max_timesteps, num_levers, seed, agent, return_optimal 
 
 if __name__ == '__main__':
   max_timesteps = 1_000
-  num_runs = 2_00
+  num_runs = 2_0
   num_levers = 10
   seed = 41
 
@@ -168,6 +191,14 @@ if __name__ == '__main__':
     agent = EpsilonGreedyAgent(num_levers = 10, epsilon = 0, alpha = 0.1, initial_sample_average = 5),
   )
 
+  ucb_average_rewards, ucb_average_probability_optimally_acted = experiment(
+    num_runs = num_runs,
+    max_timesteps = max_timesteps,
+    num_levers = num_levers,
+    seed = seed,
+    agent = UpperConfidenceBoundAgent(num_levers = 10),
+  )
+
   # Create a subplot figure with 2 rows and 1 column
   fig = plotly.subplots.make_subplots(rows=2, cols=1, subplot_titles=(
     'Average reward',
@@ -189,6 +220,7 @@ if __name__ == '__main__':
   fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=greedy_epsilon_0_1_average_rewards, mode='lines', name='Epsilon 0.1', line=dict(color=colors['Epsilon 0.1'])), row=1, col=1)
   fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=greedy_epsilon_0_1_with_constant_average_rewards, mode='lines', name='Epsilon 0.1 With Constant Step-Size', line=dict(color=colors['Epsilon 0.1'])), row=1, col=1)
   fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=optimistic_greedy_epsilon_0_1_with_constant_average_rewards, mode='lines', name='Optimistic Greedy With Constant Step-Size', line=dict(color=colors['Epsilon 0.1'])), row=1, col=1)
+  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=ucb_average_rewards, mode='lines', name='UCB', line=dict(color=colors['Epsilon 0.1'])), row=1, col=1)
 
   # Add plots for % Optimal action
   fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=average_optimal_probability_optimally_acted, mode='lines', name='Optimal', line=dict(color=colors['Random'])), row=2, col=1)
@@ -198,6 +230,7 @@ if __name__ == '__main__':
   fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=greedy_epsilon_0_1_average_probability_optimally_acted, mode='lines', name='Epsilon 0.1', line=dict(color=colors['Epsilon 0.1'])), row=2, col=1)
   fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=greedy_epsilon_0_1_with_constant_average_probability_optimally_acted, mode='lines', name='Epsilon 0.1 With Constant Step-Size', line=dict(color=colors['Epsilon 0.1'])), row=2, col=1)
   fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=optimistic_greedy_epsilon_0_1_with_constant_average_probability_optimally_acted, mode='lines', name='Optimistic Greedy With Constant Step-Size', line=dict(color=colors['Epsilon 0.1'])), row=2, col=1)
+  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=ucb_average_probability_optimally_acted, mode='lines', name='UCB', line=dict(color=colors['Epsilon 0.1'])), row=2, col=1)
 
   # Update layout
   fig.update_layout(
