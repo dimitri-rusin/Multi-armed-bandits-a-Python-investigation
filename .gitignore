@@ -1,1 +1,2 @@
 .deploy/conda_environment/
+.env

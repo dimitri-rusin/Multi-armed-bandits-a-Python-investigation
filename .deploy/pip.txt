@@ -1,3 +1,6 @@
+chart-studio
 colored==2.2.3
 gymnasium
 jupyter==1.0.0
+python-dotenv
+scipy
