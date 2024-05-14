@@ -1,6 +1,11 @@
-import copy
+import scipy.ndimage
+import chart_studio
+import chart_studio.plotly
+import chart_studio.tools as tls
+import dotenv
 import inspectify
 import numpy
+import os
 import pandas
 import plotly.graph_objects
 import plotly.subplots
@@ -63,7 +68,7 @@ class RandomAgent:
     pass
 
 class EpsilonGreedyAgent:
-  def __init__(self, num_levers, epsilon, alpha = None, initial_sample_average = 0):
+  def __init__(self, num_levers, epsilon, alpha, initial_sample_average):
     self.action_space = numpy.arange(num_levers)
     self.random_state = None
     self.alpha = alpha
@@ -135,13 +140,46 @@ def experiment(num_runs, max_timesteps, num_levers, seed, agent, return_optimal 
     average_optimal_reward, average_optimal_probability_optimally_acted = bandit_environment.optimal_stats()
     return average_rewards, average_probability_optimally_acted, average_optimal_reward, average_optimal_probability_optimally_acted
 
+
+
+
+
+
+
+
+
+
+
 if __name__ == '__main__':
-  max_timesteps = 1_000
-  num_runs = 2_0
+
+  dotenv.load_dotenv()
+
+  username = os.getenv('USERNAME')
+  api_key = os.getenv('API_KEY')
+  chart_studio.tools.set_credentials_file(username = username, api_key = api_key)
+
+  max_timesteps = 4_000
+  num_runs = 500
   num_levers = 10
   seed = 41
+  window_size = 100
 
-  random_average_rewards, random_average_probability_optimally_acted, average_optimal_reward, average_optimal_probability_optimally_acted = experiment(
+  figure = plotly.graph_objects.Figure()
+  figure.update_layout(
+    height=900, width=1200,
+    title_text=f"{num_levers}-armed bandits, doing {num_runs} trials, seeded with {seed}",
+    margin=dict(l=20, r=20, t=50, b=20)
+  )
+  colors = {
+    'Optimal': 'black',
+    'Random': 'orange',
+    'Greedy': 'green',
+    'Optimistic greedy': 'red',
+    'Epsilon greedy with 0.01': 'pink',
+    'Epsilon greedy with 0.1': 'purple',
+  }
+
+  average_random_rewards, _, average_optimal_reward, _ = experiment(
     num_runs = num_runs,
     max_timesteps = max_timesteps,
     num_levers = num_levers,
@@ -150,93 +188,127 @@ if __name__ == '__main__':
     return_optimal = True,
   )
 
-  greedy_average_rewards, greedy_average_probability_optimally_acted = experiment(
+  figure.add_trace(plotly.graph_objects.Scatter(
+    x=numpy.arange(len(average_optimal_reward)),
+    y=average_optimal_reward,
+    mode='lines',
+    name='Optimal',
+    line=dict(color=colors['Optimal'])
+  ))
+  figure.add_trace(plotly.graph_objects.Scatter(
+    x=numpy.arange(len(average_random_rewards)),
+    y=scipy.ndimage.uniform_filter1d(average_random_rewards, size=window_size),
+    mode='lines',
+    name='Random',
+    line=dict(color=colors['Random'])
+  ))
+
+  figure.write_html(
+    "computed/1.html",
+    full_html=True,  # Output as a standalone HTML document
+    include_plotlyjs=True,  # Include the full Plotly.js in the HTML
+    config=None,  # Default plot configuration without modifications
+    auto_play=True,  # Animations start automatically
+    include_mathjax=False,  # Do not include MathJax unless specifically required
+  )
+
+
+  average_greedy_rewards, _ = experiment(
     num_runs = num_runs,
     max_timesteps = max_timesteps,
     num_levers = num_levers,
     seed = seed,
-    agent = EpsilonGreedyAgent(num_levers = 10, epsilon = 0),
+    agent = EpsilonGreedyAgent(num_levers = 10, epsilon = 0, alpha = None, initial_sample_average = 0),
   )
 
-  greedy_epsilon_0_01_average_rewards, greedy_epsilon_0_01_average_probability_optimally_acted = experiment(
+  figure.add_trace(plotly.graph_objects.Scatter(
+    x=numpy.arange(len(average_greedy_rewards)),
+    y=average_greedy_rewards,
+    mode='lines',
+    name='Greedy',
+    line=dict(color=colors['Greedy'])
+  ))
+
+  figure.write_html(
+    "computed/2.html",
+    full_html=True,  # Output as a standalone HTML document
+    include_plotlyjs=True,  # Include the full Plotly.js in the HTML
+    config=None,  # Default plot configuration without modifications
+    auto_play=True,  # Animations start automatically
+    include_mathjax=False,  # Do not include MathJax unless specifically required
+  )
+
+
+
+  average_001_epsilon_greedy_rewards, _ = experiment(
     num_runs = num_runs,
     max_timesteps = max_timesteps,
     num_levers = num_levers,
     seed = seed,
-    agent = EpsilonGreedyAgent(num_levers = 10, epsilon = 0.01),
+    agent = EpsilonGreedyAgent(num_levers = 10, epsilon = 0.01, alpha = None, initial_sample_average = 0),
   )
 
-  greedy_epsilon_0_1_average_rewards, greedy_epsilon_0_1_average_probability_optimally_acted = experiment(
+  average_01_epsilon_greedy_rewards, _ = experiment(
     num_runs = num_runs,
     max_timesteps = max_timesteps,
     num_levers = num_levers,
     seed = seed,
-    agent = EpsilonGreedyAgent(num_levers = 10, epsilon = 0.1),
+    agent = EpsilonGreedyAgent(num_levers = 10, epsilon = 0.1, alpha = None, initial_sample_average = 0),
   )
 
-  greedy_epsilon_0_1_with_constant_average_rewards, greedy_epsilon_0_1_with_constant_average_probability_optimally_acted = experiment(
+  inspectify.d(average_01_epsilon_greedy_rewards)
+
+  figure.add_trace(plotly.graph_objects.Scatter(
+    x=numpy.arange(len(average_001_epsilon_greedy_rewards)),
+    y=average_001_epsilon_greedy_rewards,
+    mode='lines',
+    name='Epsilon greedy with 0.01',
+    line=dict(color=colors['Epsilon greedy with 0.01']),
+  ))
+  figure.add_trace(plotly.graph_objects.Scatter(
+    x=numpy.arange(len(average_01_epsilon_greedy_rewards)),
+    y=average_01_epsilon_greedy_rewards,
+    mode='lines',
+    name='Epsilon greedy with 0.1',
+    line=dict(color=colors['Epsilon greedy with 0.1']),
+  ))
+
+  figure.write_html(
+    "computed/3.html",
+    full_html=True,  # Output as a standalone HTML document
+    include_plotlyjs=True,  # Include the full Plotly.js in the HTML
+    config=None,  # Default plot configuration without modifications
+    auto_play=True,  # Animations start automatically
+    include_mathjax=False,  # Do not include MathJax unless specifically required
+  )
+
+
+
+  average_optimistic_greedy_rewards, _ = experiment(
     num_runs = num_runs,
     max_timesteps = max_timesteps,
     num_levers = num_levers,
     seed = seed,
-    agent = EpsilonGreedyAgent(num_levers = 10, epsilon = 0.1, alpha = 0.1),
+    agent = EpsilonGreedyAgent(num_levers = 10, epsilon = 0, alpha = 0.1, initial_sample_average = 1),
   )
 
-  optimistic_greedy_epsilon_0_1_with_constant_average_rewards, optimistic_greedy_epsilon_0_1_with_constant_average_probability_optimally_acted = experiment(
-    num_runs = num_runs,
-    max_timesteps = max_timesteps,
-    num_levers = num_levers,
-    seed = seed,
-    agent = EpsilonGreedyAgent(num_levers = 10, epsilon = 0, alpha = 0.1, initial_sample_average = 5),
+  figure.add_trace(plotly.graph_objects.Scatter(
+    x=numpy.arange(len(average_optimistic_greedy_rewards)),
+    y=average_optimistic_greedy_rewards,
+    mode='lines',
+    name='Optimistic greedy (alpha = 0.1, Q_0 = 1)',
+    line=dict(color=colors['Optimistic greedy'])
+  ))
+
+  figure.write_html(
+    "computed/4.html",
+    full_html=True,  # Output as a standalone HTML document
+    include_plotlyjs=True,  # Include the full Plotly.js in the HTML
+    config=None,  # Default plot configuration without modifications
+    auto_play=True,  # Animations start automatically
+    include_mathjax=False,  # Do not include MathJax unless specifically required
   )
 
-  ucb_average_rewards, ucb_average_probability_optimally_acted = experiment(
-    num_runs = num_runs,
-    max_timesteps = max_timesteps,
-    num_levers = num_levers,
-    seed = seed,
-    agent = UpperConfidenceBoundAgent(num_levers = 10),
-  )
 
-  # Create a subplot figure with 2 rows and 1 column
-  fig = plotly.subplots.make_subplots(rows=2, cols=1, subplot_titles=(
-    'Average reward',
-    '% Optimal action'))
 
-  # Define colors for each strategy
-  colors = {
-    'Random': 'orange',
-    'Greedy': 'green',
-    'Epsilon 0.01': 'red',
-    'Epsilon 0.1': 'blue'
-  }
-
-  # Add plots for Average reward
-  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=average_optimal_reward, mode='lines', name='Optimal', line=dict(color=colors['Random'])), row=1, col=1)
-  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=random_average_rewards, mode='lines', name='Random', line=dict(color=colors['Random'])), row=1, col=1)
-  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=greedy_average_rewards, mode='lines', name='Greedy', line=dict(color=colors['Greedy'])), row=1, col=1)
-  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=greedy_epsilon_0_01_average_rewards, mode='lines', name='Epsilon 0.01', line=dict(color=colors['Epsilon 0.01'])), row=1, col=1)
-  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=greedy_epsilon_0_1_average_rewards, mode='lines', name='Epsilon 0.1', line=dict(color=colors['Epsilon 0.1'])), row=1, col=1)
-  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=greedy_epsilon_0_1_with_constant_average_rewards, mode='lines', name='Epsilon 0.1 With Constant Step-Size', line=dict(color=colors['Epsilon 0.1'])), row=1, col=1)
-  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=optimistic_greedy_epsilon_0_1_with_constant_average_rewards, mode='lines', name='Optimistic Greedy With Constant Step-Size', line=dict(color=colors['Epsilon 0.1'])), row=1, col=1)
-  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=ucb_average_rewards, mode='lines', name='UCB', line=dict(color=colors['Epsilon 0.1'])), row=1, col=1)
-
-  # Add plots for % Optimal action
-  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=average_optimal_probability_optimally_acted, mode='lines', name='Optimal', line=dict(color=colors['Random'])), row=2, col=1)
-  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=random_average_probability_optimally_acted, mode='lines', name='Random', line=dict(color=colors['Random'])), row=2, col=1)
-  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=greedy_average_probability_optimally_acted, mode='lines', name='Greedy', line=dict(color=colors['Greedy'])), row=2, col=1)
-  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=greedy_epsilon_0_01_average_probability_optimally_acted, mode='lines', name='Epsilon 0.01', line=dict(color=colors['Epsilon 0.01'])), row=2, col=1)
-  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=greedy_epsilon_0_1_average_probability_optimally_acted, mode='lines', name='Epsilon 0.1', line=dict(color=colors['Epsilon 0.1'])), row=2, col=1)
-  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=greedy_epsilon_0_1_with_constant_average_probability_optimally_acted, mode='lines', name='Epsilon 0.1 With Constant Step-Size', line=dict(color=colors['Epsilon 0.1'])), row=2, col=1)
-  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=optimistic_greedy_epsilon_0_1_with_constant_average_probability_optimally_acted, mode='lines', name='Optimistic Greedy With Constant Step-Size', line=dict(color=colors['Epsilon 0.1'])), row=2, col=1)
-  fig.add_trace(plotly.graph_objects.Scatter(x=list(range(max_timesteps)), y=ucb_average_probability_optimally_acted, mode='lines', name='UCB', line=dict(color=colors['Epsilon 0.1'])), row=2, col=1)
-
-  # Update layout
-  fig.update_layout(
-    height=900, width=1200,
-    title_text="Multi-Armed Bandit Experiment Results",
-    margin=dict(l=20, r=20, t=50, b=20)
-  )
-
-  # Show the figure
-  fig.show()
+  chart_studio.plotly.plot(figure, filename="plotly_scatter", auto_open = True)
