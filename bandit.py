@@ -1,14 +1,11 @@
-import scipy.ndimage
 import chart_studio
-import chart_studio.plotly
-import chart_studio.tools as tls
 import dotenv
 import inspectify
 import numpy
 import os
 import pandas
 import plotly.graph_objects
-import plotly.subplots
+import scipy.ndimage
 
 class MultiArmedBandit:
   def __init__(self, num_levers, max_timesteps):
@@ -100,7 +97,7 @@ class EpsilonGreedyAgent:
       self.sample_average[action] += (1 / self.sample_count[action]) * (reward - self.sample_average[action])
 
 class UpperConfidenceBoundAgent:
-  def __init__(self, num_levers, c=2):
+  def __init__(self, num_levers, c):
     self.action_space = numpy.arange(num_levers)
     self.c = c
 
@@ -151,11 +148,11 @@ def experiment(num_runs, max_timesteps, num_levers, seed, agent, return_optimal 
 
 
 if __name__ == '__main__':
-
   dotenv.load_dotenv()
 
-  username = os.getenv('USERNAME')
-  api_key = os.getenv('API_KEY')
+  username = os.getenv('CHART_STUDIO.USERNAME')
+  api_key = os.getenv('CHART_STUDIO.API_KEY')
+
   chart_studio.tools.set_credentials_file(username = username, api_key = api_key)
 
   max_timesteps = 4_000
@@ -177,6 +174,7 @@ if __name__ == '__main__':
     'Optimistic greedy': 'red',
     'Epsilon greedy with 0.01': 'pink',
     'Epsilon greedy with 0.1': 'purple',
+    'UCB1': 'yellow',
   }
 
   average_random_rewards, _, average_optimal_reward, _ = experiment(
@@ -190,7 +188,7 @@ if __name__ == '__main__':
 
   figure.add_trace(plotly.graph_objects.Scatter(
     x=numpy.arange(len(average_optimal_reward)),
-    y=average_optimal_reward,
+    y=scipy.ndimage.uniform_filter1d(average_optimal_reward, size=window_size),
     mode='lines',
     name='Optimal',
     line=dict(color=colors['Optimal'])
@@ -223,7 +221,7 @@ if __name__ == '__main__':
 
   figure.add_trace(plotly.graph_objects.Scatter(
     x=numpy.arange(len(average_greedy_rewards)),
-    y=average_greedy_rewards,
+    y=scipy.ndimage.uniform_filter1d(average_greedy_rewards, size=window_size),
     mode='lines',
     name='Greedy',
     line=dict(color=colors['Greedy'])
@@ -260,14 +258,14 @@ if __name__ == '__main__':
 
   figure.add_trace(plotly.graph_objects.Scatter(
     x=numpy.arange(len(average_001_epsilon_greedy_rewards)),
-    y=average_001_epsilon_greedy_rewards,
+    y=scipy.ndimage.uniform_filter1d(average_001_epsilon_greedy_rewards, size=window_size),
     mode='lines',
     name='Epsilon greedy with 0.01',
     line=dict(color=colors['Epsilon greedy with 0.01']),
   ))
   figure.add_trace(plotly.graph_objects.Scatter(
     x=numpy.arange(len(average_01_epsilon_greedy_rewards)),
-    y=average_01_epsilon_greedy_rewards,
+    y=scipy.ndimage.uniform_filter1d(average_01_epsilon_greedy_rewards, size=window_size),
     mode='lines',
     name='Epsilon greedy with 0.1',
     line=dict(color=colors['Epsilon greedy with 0.1']),
@@ -294,7 +292,7 @@ if __name__ == '__main__':
 
   figure.add_trace(plotly.graph_objects.Scatter(
     x=numpy.arange(len(average_optimistic_greedy_rewards)),
-    y=average_optimistic_greedy_rewards,
+    y=scipy.ndimage.uniform_filter1d(average_optimistic_greedy_rewards, size=window_size),
     mode='lines',
     name='Optimistic greedy (alpha = 0.1, Q_0 = 1)',
     line=dict(color=colors['Optimistic greedy'])
@@ -302,6 +300,34 @@ if __name__ == '__main__':
 
   figure.write_html(
     "computed/4.html",
+    full_html=True,  # Output as a standalone HTML document
+    include_plotlyjs=True,  # Include the full Plotly.js in the HTML
+    config=None,  # Default plot configuration without modifications
+    auto_play=True,  # Animations start automatically
+    include_mathjax=False,  # Do not include MathJax unless specifically required
+  )
+
+
+
+
+  average_ucb1_rewards, _ = experiment(
+    num_runs = num_runs,
+    max_timesteps = max_timesteps,
+    num_levers = num_levers,
+    seed = seed,
+    agent = UpperConfidenceBoundAgent(num_levers = 10, c = 2),
+  )
+
+  figure.add_trace(plotly.graph_objects.Scatter(
+    x = numpy.arange(len(average_ucb1_rewards)),
+    y = scipy.ndimage.uniform_filter1d(average_ucb1_rewards, size=window_size),
+    mode = 'lines',
+    name = 'UCB1 with c = 2',
+    line = {'color': colors['UCB1']},
+  ))
+
+  figure.write_html(
+    "computed/5.html",
     full_html=True,  # Output as a standalone HTML document
     include_plotlyjs=True,  # Include the full Plotly.js in the HTML
     config=None,  # Default plot configuration without modifications
