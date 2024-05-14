@@ -1,8 +1,7 @@
 import copy
-import numpy
-import pandas
 import inspectify
 import numpy
+import pandas
 import plotly.graph_objects
 import plotly.subplots
 
