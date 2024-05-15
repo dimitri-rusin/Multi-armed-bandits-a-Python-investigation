@@ -1,6 +1,3 @@
-import chart_studio
-import dotenv
-import inspectify
 import numpy
 import os
 import pandas
@@ -139,33 +136,21 @@ def experiment(num_runs, max_timesteps, num_levers, seed, agent, return_optimal 
 
 
 
-
-
-
-
-
-
-
-
 if __name__ == '__main__':
-  dotenv.load_dotenv()
-
-  username = os.getenv('CHART_STUDIO.USERNAME')
-  api_key = os.getenv('CHART_STUDIO.API_KEY')
-
-  chart_studio.tools.set_credentials_file(username = username, api_key = api_key)
-
-  max_timesteps = 4_000
-  num_runs = 500
+  max_timesteps = 10_000
+  num_runs = 100
   num_levers = 10
-  seed = 41
-  num_smoothed_timesteps = 100
+  seed = 42
+  num_smoothed_steps = 400
+
+  os.makedirs('computed', exist_ok = True)
 
   figure = plotly.graph_objects.Figure()
   figure.update_layout(
-    height=900, width=1200,
-    title_text=f"{num_levers}-armed bandits, doing {num_runs} trials, seeded with {seed}",
-    margin=dict(l=20, r=20, t=50, b=20)
+    height=900,
+    width=1200,
+    title_text=f"Bandit with 10 arms. Each step's reward is averaged over {num_runs} seeds and {num_smoothed_steps} previous steps.",
+    margin=dict(l=20, r=20, t=50, b=20),
   )
   colors = {
     'Optimal': 'black',
@@ -188,29 +173,27 @@ if __name__ == '__main__':
 
   figure.add_trace(plotly.graph_objects.Scatter(
     x=numpy.arange(len(average_optimal_reward)),
-    y=scipy.ndimage.uniform_filter1d(average_optimal_reward, size=num_smoothed_timesteps),
+    y=scipy.ndimage.uniform_filter1d(average_optimal_reward, size=num_smoothed_steps),
     mode='lines',
     name='Optimal',
-    line=dict(color=colors['Optimal'])
+    line=dict(color=colors['Optimal'], dash='dash'),
   ))
   figure.add_trace(plotly.graph_objects.Scatter(
     x=numpy.arange(len(average_random_rewards)),
-    y=scipy.ndimage.uniform_filter1d(average_random_rewards, size=num_smoothed_timesteps),
+    y=scipy.ndimage.uniform_filter1d(average_random_rewards, size=num_smoothed_steps),
     mode='lines',
     name='Random',
     line=dict(color=colors['Random'])
   ))
 
-  figure.write_html(
-    "computed/1.html",
-    full_html=True,  # Output as a standalone HTML document
-    include_plotlyjs=True,  # Include the full Plotly.js in the HTML
-    config=None,  # Default plot configuration without modifications
-    auto_play=True,  # Animations start automatically
-    include_mathjax=False,  # Do not include MathJax unless specifically required
-  )
-  print("Written:", "computed/1.html")
-
+  figure.write_image("computed/1.png", **{
+    'format': 'png',
+    'width': 800,
+    'height': 600,
+    'validate': True,
+    'scale': 4,
+  })
+  print("Written:", "computed/1.png")
 
   average_greedy_rewards, _ = experiment(
     num_runs = num_runs,
@@ -222,23 +205,45 @@ if __name__ == '__main__':
 
   figure.add_trace(plotly.graph_objects.Scatter(
     x=numpy.arange(len(average_greedy_rewards)),
-    y=scipy.ndimage.uniform_filter1d(average_greedy_rewards, size=num_smoothed_timesteps),
+    y=scipy.ndimage.uniform_filter1d(average_greedy_rewards, size=num_smoothed_steps),
     mode='lines',
     name='Greedy',
     line=dict(color=colors['Greedy'])
   ))
 
-  figure.write_html(
-    "computed/2.html",
-    full_html=True,  # Output as a standalone HTML document
-    include_plotlyjs=True,  # Include the full Plotly.js in the HTML
-    config=None,  # Default plot configuration without modifications
-    auto_play=True,  # Animations start automatically
-    include_mathjax=False,  # Do not include MathJax unless specifically required
+  figure.write_image("computed/2.png", **{
+    'format': 'png',
+    'width': 800,
+    'height': 600,
+    'validate': True,
+    'scale': 4,
+  })
+  print("Written:", "computed/2.png")
+
+  average_optimistic_greedy_rewards, _ = experiment(
+    num_runs = num_runs,
+    max_timesteps = max_timesteps,
+    num_levers = num_levers,
+    seed = seed,
+    agent = EpsilonGreedyAgent(num_levers = 10, epsilon = 0, alpha = 0.1, initial_sample_average = 1),
   )
-  print("Written:", "computed/2.html")
 
+  figure.add_trace(plotly.graph_objects.Scatter(
+    x=numpy.arange(len(average_optimistic_greedy_rewards)),
+    y=scipy.ndimage.uniform_filter1d(average_optimistic_greedy_rewards, size=num_smoothed_steps),
+    mode='lines',
+    name='Optimistic greedy',
+    line=dict(color=colors['Optimistic greedy'])
+  ))
 
+  figure.write_image("computed/3.png", **{
+    'format': 'png',
+    'width': 800,
+    'height': 600,
+    'validate': True,
+    'scale': 4,
+  })
+  print("Written:", "computed/3.png")
 
   average_001_epsilon_greedy_rewards, _ = experiment(
     num_runs = num_runs,
@@ -258,59 +263,27 @@ if __name__ == '__main__':
 
   figure.add_trace(plotly.graph_objects.Scatter(
     x=numpy.arange(len(average_001_epsilon_greedy_rewards)),
-    y=scipy.ndimage.uniform_filter1d(average_001_epsilon_greedy_rewards, size=num_smoothed_timesteps),
+    y=scipy.ndimage.uniform_filter1d(average_001_epsilon_greedy_rewards, size=num_smoothed_steps),
     mode='lines',
     name='Epsilon greedy with 0.01',
     line=dict(color=colors['Epsilon greedy with 0.01']),
   ))
   figure.add_trace(plotly.graph_objects.Scatter(
     x=numpy.arange(len(average_01_epsilon_greedy_rewards)),
-    y=scipy.ndimage.uniform_filter1d(average_01_epsilon_greedy_rewards, size=num_smoothed_timesteps),
+    y=scipy.ndimage.uniform_filter1d(average_01_epsilon_greedy_rewards, size=num_smoothed_steps),
     mode='lines',
     name='Epsilon greedy with 0.1',
     line=dict(color=colors['Epsilon greedy with 0.1']),
   ))
 
-  figure.write_html(
-    "computed/3.html",
-    full_html=True,  # Output as a standalone HTML document
-    include_plotlyjs=True,  # Include the full Plotly.js in the HTML
-    config=None,  # Default plot configuration without modifications
-    auto_play=True,  # Animations start automatically
-    include_mathjax=False,  # Do not include MathJax unless specifically required
-  )
-  print("Written:", "computed/3.html")
-
-
-
-  average_optimistic_greedy_rewards, _ = experiment(
-    num_runs = num_runs,
-    max_timesteps = max_timesteps,
-    num_levers = num_levers,
-    seed = seed,
-    agent = EpsilonGreedyAgent(num_levers = 10, epsilon = 0, alpha = 0.1, initial_sample_average = 1),
-  )
-
-  figure.add_trace(plotly.graph_objects.Scatter(
-    x=numpy.arange(len(average_optimistic_greedy_rewards)),
-    y=scipy.ndimage.uniform_filter1d(average_optimistic_greedy_rewards, size=num_smoothed_timesteps),
-    mode='lines',
-    name='Optimistic greedy (alpha = 0.1, Q_0 = 1)',
-    line=dict(color=colors['Optimistic greedy'])
-  ))
-
-  figure.write_html(
-    "computed/4.html",
-    full_html=True,  # Output as a standalone HTML document
-    include_plotlyjs=True,  # Include the full Plotly.js in the HTML
-    config=None,  # Default plot configuration without modifications
-    auto_play=True,  # Animations start automatically
-    include_mathjax=False,  # Do not include MathJax unless specifically required
-  )
-  print("Written:", "computed/4.html")
-
-
-
+  figure.write_image("computed/4.png", **{
+    'format': 'png',
+    'width': 800,
+    'height': 600,
+    'validate': True,
+    'scale': 4,
+  })
+  print("Written:", "computed/4.png")
 
   average_ucb1_rewards, _ = experiment(
     num_runs = num_runs,
@@ -322,22 +295,17 @@ if __name__ == '__main__':
 
   figure.add_trace(plotly.graph_objects.Scatter(
     x = numpy.arange(len(average_ucb1_rewards)),
-    y = scipy.ndimage.uniform_filter1d(average_ucb1_rewards, size=num_smoothed_timesteps),
+    y = scipy.ndimage.uniform_filter1d(average_ucb1_rewards, size=num_smoothed_steps),
     mode = 'lines',
     name = 'UCB1 with c = 2',
     line = {'color': colors['UCB1']},
   ))
 
-  figure.write_html(
-    "computed/5.html",
-    full_html=True,  # Output as a standalone HTML document
-    include_plotlyjs=True,  # Include the full Plotly.js in the HTML
-    config=None,  # Default plot configuration without modifications
-    auto_play=True,  # Animations start automatically
-    include_mathjax=False,  # Do not include MathJax unless specifically required
-  )
-  print("Written:", "computed/5.html")
-
-
-
-  chart_studio.plotly.plot(figure, filename="plotly_scatter", auto_open = True)
+  figure.write_image("computed/5.png", **{
+    'format': 'png',
+    'width': 800,
+    'height': 600,
+    'validate': True,
+    'scale': 4,
+  })
+  print("Written:", "computed/5.png")
