@@ -25,4 +25,4 @@ source "$conda_sh_path"
 
 
 conda activate .deploy/conda_environment
-python start.py
+python bandit.py
