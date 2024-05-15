@@ -41,8 +41,8 @@ class MultiArmedBandit:
 
   def stats(self):
     average_rewards = self.rewards / self.num_runs
-    average_probability_optimally_acted = (self.best_lever_chosen_probability / self.num_runs) * 100
-    return average_rewards, average_probability_optimally_acted
+    relative_count_of_optimal_choices = (self.best_lever_chosen_probability / self.num_runs) * 100
+    return average_rewards,relative_count_of_optimal_choices
 
   def optimal_stats(self):
     average_optimal_reward = numpy.ones(self.max_timesteps) * (self.optimal_reward / self.num_runs)
@@ -130,12 +130,12 @@ def experiment(num_runs, max_timesteps, num_levers, seed, agent, return_optimal 
       reward = bandit_environment.step(action)
       agent.learn(action, reward)
 
-  average_rewards, average_probability_optimally_acted = bandit_environment.stats()
+  average_rewards, relative_count_of_optimal_choices = bandit_environment.stats()
   if not return_optimal:
-    return average_rewards, average_probability_optimally_acted
+    return average_rewards,relative_count_of_optimal_choices
   else:
     average_optimal_reward, average_optimal_probability_optimally_acted = bandit_environment.optimal_stats()
-    return average_rewards, average_probability_optimally_acted, average_optimal_reward, average_optimal_probability_optimally_acted
+    return average_rewards, relative_count_of_optimal_choices, average_optimal_reward, average_optimal_probability_optimally_acted
 
 
 
@@ -159,7 +159,7 @@ if __name__ == '__main__':
   num_runs = 500
   num_levers = 10
   seed = 41
-  window_size = 100
+  num_smoothed_timesteps = 100
 
   figure = plotly.graph_objects.Figure()
   figure.update_layout(
@@ -188,14 +188,14 @@ if __name__ == '__main__':
 
   figure.add_trace(plotly.graph_objects.Scatter(
     x=numpy.arange(len(average_optimal_reward)),
-    y=scipy.ndimage.uniform_filter1d(average_optimal_reward, size=window_size),
+    y=scipy.ndimage.uniform_filter1d(average_optimal_reward, size=num_smoothed_timesteps),
     mode='lines',
     name='Optimal',
     line=dict(color=colors['Optimal'])
   ))
   figure.add_trace(plotly.graph_objects.Scatter(
     x=numpy.arange(len(average_random_rewards)),
-    y=scipy.ndimage.uniform_filter1d(average_random_rewards, size=window_size),
+    y=scipy.ndimage.uniform_filter1d(average_random_rewards, size=num_smoothed_timesteps),
     mode='lines',
     name='Random',
     line=dict(color=colors['Random'])
@@ -209,6 +209,7 @@ if __name__ == '__main__':
     auto_play=True,  # Animations start automatically
     include_mathjax=False,  # Do not include MathJax unless specifically required
   )
+  print("Written:", "computed/1.html")
 
 
   average_greedy_rewards, _ = experiment(
@@ -221,7 +222,7 @@ if __name__ == '__main__':
 
   figure.add_trace(plotly.graph_objects.Scatter(
     x=numpy.arange(len(average_greedy_rewards)),
-    y=scipy.ndimage.uniform_filter1d(average_greedy_rewards, size=window_size),
+    y=scipy.ndimage.uniform_filter1d(average_greedy_rewards, size=num_smoothed_timesteps),
     mode='lines',
     name='Greedy',
     line=dict(color=colors['Greedy'])
@@ -235,6 +236,7 @@ if __name__ == '__main__':
     auto_play=True,  # Animations start automatically
     include_mathjax=False,  # Do not include MathJax unless specifically required
   )
+  print("Written:", "computed/2.html")
 
 
 
@@ -254,18 +256,16 @@ if __name__ == '__main__':
     agent = EpsilonGreedyAgent(num_levers = 10, epsilon = 0.1, alpha = None, initial_sample_average = 0),
   )
 
-  inspectify.d(average_01_epsilon_greedy_rewards)
-
   figure.add_trace(plotly.graph_objects.Scatter(
     x=numpy.arange(len(average_001_epsilon_greedy_rewards)),
-    y=scipy.ndimage.uniform_filter1d(average_001_epsilon_greedy_rewards, size=window_size),
+    y=scipy.ndimage.uniform_filter1d(average_001_epsilon_greedy_rewards, size=num_smoothed_timesteps),
     mode='lines',
     name='Epsilon greedy with 0.01',
     line=dict(color=colors['Epsilon greedy with 0.01']),
   ))
   figure.add_trace(plotly.graph_objects.Scatter(
     x=numpy.arange(len(average_01_epsilon_greedy_rewards)),
-    y=scipy.ndimage.uniform_filter1d(average_01_epsilon_greedy_rewards, size=window_size),
+    y=scipy.ndimage.uniform_filter1d(average_01_epsilon_greedy_rewards, size=num_smoothed_timesteps),
     mode='lines',
     name='Epsilon greedy with 0.1',
     line=dict(color=colors['Epsilon greedy with 0.1']),
@@ -279,6 +279,7 @@ if __name__ == '__main__':
     auto_play=True,  # Animations start automatically
     include_mathjax=False,  # Do not include MathJax unless specifically required
   )
+  print("Written:", "computed/3.html")
 
 
 
@@ -292,7 +293,7 @@ if __name__ == '__main__':
 
   figure.add_trace(plotly.graph_objects.Scatter(
     x=numpy.arange(len(average_optimistic_greedy_rewards)),
-    y=scipy.ndimage.uniform_filter1d(average_optimistic_greedy_rewards, size=window_size),
+    y=scipy.ndimage.uniform_filter1d(average_optimistic_greedy_rewards, size=num_smoothed_timesteps),
     mode='lines',
     name='Optimistic greedy (alpha = 0.1, Q_0 = 1)',
     line=dict(color=colors['Optimistic greedy'])
@@ -306,6 +307,7 @@ if __name__ == '__main__':
     auto_play=True,  # Animations start automatically
     include_mathjax=False,  # Do not include MathJax unless specifically required
   )
+  print("Written:", "computed/4.html")
 
 
 
@@ -320,7 +322,7 @@ if __name__ == '__main__':
 
   figure.add_trace(plotly.graph_objects.Scatter(
     x = numpy.arange(len(average_ucb1_rewards)),
-    y = scipy.ndimage.uniform_filter1d(average_ucb1_rewards, size=window_size),
+    y = scipy.ndimage.uniform_filter1d(average_ucb1_rewards, size=num_smoothed_timesteps),
     mode = 'lines',
     name = 'UCB1 with c = 2',
     line = {'color': colors['UCB1']},
@@ -334,6 +336,7 @@ if __name__ == '__main__':
     auto_play=True,  # Animations start automatically
     include_mathjax=False,  # Do not include MathJax unless specifically required
   )
+  print("Written:", "computed/5.html")
 
 
 
