@@ -1,2 +1,3 @@
 .deploy/conda_environment/
 .env
+computed/
